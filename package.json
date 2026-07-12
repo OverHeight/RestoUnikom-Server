@@ -1,0 +1,25 @@
+{
+  "name": "unikom-info-server",
+  "version": "1.0.0",
+  "description": "",
+  "license": "ISC",
+  "author": "goyobod",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "nodemon index.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.108.2",
+    "bcrypt": "^6.0.0",
+    "body-parser": "^2.3.0",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "fs": "^0.0.1-security",
+    "joi": "^18.2.3",
+    "jsonwebtoken": "^9.0.3",
+    "sequelize": "^6.37.8"
+  }
+}

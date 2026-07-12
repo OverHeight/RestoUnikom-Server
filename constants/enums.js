@@ -1,0 +1,54 @@
+export const ROLE = {
+  ADMIN: "ADMIN",
+  KASIR: "KASIR",
+  KOKI: "KOKI",
+  PELAYAN: "PELAYAN",
+};
+
+export const MEJA_STATUS = {
+  KOSONG: "KOSONG",
+  TERISI: "TERISI",
+  DIBOOKING: "DIBOOKING",
+};
+
+export const RESERVASI_STATUS = {
+  MENUNGGU: "MENUNGGU",
+  DITERIMA: "DITERIMA",
+  DITOLAK: "DITOLAK",
+  SELESAI: "SELESAI",
+  BATAL: "BATAL",
+};
+
+export const ORDER_STATUS = {
+  MENUNGGU: "MENUNGGU",
+  DIPROSES: "DIPROSES",
+  SIAP: "SIAP",
+  SELESAI: "SELESAI",
+};
+
+export const ORDER_COURSE_STATUS = {
+  MENUNGGU: "MENUNGGU",
+  SIAP: "SIAP",
+  DIANTAR: "DIANTAR",
+  SELESAI: "SELESAI",
+};
+
+export const COURSE_TYPE = {
+  APPETIZER: "APPETIZER",
+  MAIN_A: "MAIN_A",
+  MAIN_B: "MAIN_B",
+  DESSERT: "DESSERT",
+};
+
+export const PEMBAYARAN_STATUS = {
+  PENDING: "PENDING",
+  LUNAS: "LUNAS",
+  GAGAL: "GAGAL",
+};
+
+export const METODE_PEMBAYARAN = {
+  TUNAI: "TUNAI",
+  QRIS: "QRIS",
+  TRANSFER: "TRANSFER",
+  KARTU: "KARTU",
+};
