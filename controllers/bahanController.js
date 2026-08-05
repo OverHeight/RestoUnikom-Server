@@ -70,32 +70,8 @@ export const update = async (req, res, next) => {
   }
 };
 
-export const adjustStock = async (req, res, next) => {
-  try {
-    const { adjustment } = req.body;
-    const { data: current } = await supabase
-      .from("bahan")
-      .select("stok")
-      .eq("id", req.params.id)
-      .single();
-
-    const newStock = (current?.stok || 0) + adjustment;
-    if (newStock < 0)
-      return res.status(400).json({ message: "Stock cannot be negative" });
-
-    const { data, error } = await supabase
-      .from("bahan")
-      .update({ stok: newStock })
-      .eq("id", req.params.id)
-      .select()
-      .single();
-
-    if (error) throw error;
-    res.json(data);
-  } catch (err) {
-    next(err);
-  }
-};
+// adjustStock has been removed in accordance with the backend architecture spec.
+// All stock modifications must go through inventoryLogController (stok_log).
 
 export const remove = async (req, res, next) => {
   try {

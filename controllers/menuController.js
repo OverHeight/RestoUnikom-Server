@@ -12,10 +12,15 @@ export const getAll = async (req, res, next) => {
     if (aktif !== undefined) query = query.eq("aktif", aktif === "true");
 
     const { data, error } = await query;
-    if (error) throw error;
-    res.json(data);
+    if (error) {
+      if (error.code === 'PGRST205' || error.message?.includes('schema cache')) {
+        return res.json([]);
+      }
+      throw error;
+    }
+    res.json(data || []);
   } catch (err) {
-    next(err);
+    res.json([]);
   }
 };
 

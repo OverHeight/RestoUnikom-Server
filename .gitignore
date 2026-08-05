@@ -1,4 +1,19 @@
-node_modules/
+# Server Dependencies
+node_modules
+
+# Environment Files & API Secrets
 .env
-dist/
-build/
+.env.local
+.env.production
+*.env
+
+# Logs
+logs
+*.log
+npm-debug.log*
+
+# Editor & OS Files
+.vscode
+.idea
+.DS_Store
+Thumbs.db

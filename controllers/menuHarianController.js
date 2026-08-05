@@ -5,9 +5,10 @@ export const getAll = async (req, res, next) => {
     const { tanggal } = req.query;
     let query = supabase
       .from("menu_harian")
-      .select(
-        "*, appetizer:appetizer_id(*), menu_a:menu_a_id(*), menu_b:menu_b_id(*), dessert:dessert_id(*), creator:created_by(*)",
-      )
+      .select(`
+        *,
+        menu_harian_detail(*, menu(*))
+      `)
       .order("tanggal", { ascending: false });
 
     if (tanggal) query = query.eq("tanggal", tanggal);
@@ -24,9 +25,10 @@ export const getById = async (req, res, next) => {
   try {
     const { data, error } = await supabase
       .from("menu_harian")
-      .select(
-        "*, appetizer:appetizer_id(*), menu_a:menu_a_id(*), menu_b:menu_b_id(*), dessert:dessert_id(*), creator:created_by(*)",
-      )
+      .select(`
+        *,
+        menu_harian_detail(*, menu(*))
+      `)
       .eq("id", req.params.id)
       .single();
 
@@ -42,17 +44,15 @@ export const getByDate = async (req, res, next) => {
   try {
     const { data, error } = await supabase
       .from("menu_harian")
-      .select(
-        "*, appetizer:appetizer_id(*), menu_a:menu_a_id(*), menu_b:menu_b_id(*), dessert:dessert_id(*)",
-      )
+      .select(`
+        *,
+        menu_harian_detail(*, menu(*))
+      `)
       .eq("tanggal", req.params.date)
       .single();
 
-    if (error) throw error;
-    if (!data)
-      return res
-        .status(404)
-        .json({ message: "Daily menu not found for this date" });
+    if (error && error.code !== "PGRST116") throw error; // Handle single() zero rows
+    if (!data) return res.status(404).json({ message: "Daily menu not found for this date" });
     res.json(data);
   } catch (err) {
     next(err);
@@ -63,29 +63,39 @@ export const create = async (req, res, next) => {
   try {
     const {
       tanggal,
-      appetizer_id,
-      menu_a_id,
-      menu_b_id,
-      dessert_id,
+      nama_set,
       created_by,
+      details // Array of { id_menu, course }
     } = req.body;
-    const { data, error } = await supabase
+
+    // 1. Insert header
+    const { data: menuHarian, error: mhError } = await supabase
       .from("menu_harian")
-      .insert({
-        tanggal,
-        appetizer_id,
-        menu_a_id,
-        menu_b_id,
-        dessert_id,
-        created_by,
-      })
-      .select(
-        "*, appetizer:appetizer_id(*), menu_a:menu_a_id(*), menu_b:menu_b_id(*), dessert:dessert_id(*)",
-      )
+      .insert({ tanggal, nama_set, created_by })
+      .select()
+      .single();
+    if (mhError) throw mhError;
+
+    // 2. Insert details
+    if (details && details.length > 0) {
+      const detailsToInsert = details.map(d => ({
+        id_menu_harian: menuHarian.id,
+        id_menu: d.id_menu,
+        course: d.course
+      }));
+      const { error: dError } = await supabase
+        .from("menu_harian_detail")
+        .insert(detailsToInsert);
+      if (dError) throw dError;
+    }
+
+    const { data: completeData } = await supabase
+      .from("menu_harian")
+      .select("*, menu_harian_detail(*, menu(*))")
+      .eq("id", menuHarian.id)
       .single();
 
-    if (error) throw error;
-    res.status(201).json(data);
+    res.status(201).json(completeData);
   } catch (err) {
     next(err);
   }
@@ -93,33 +103,36 @@ export const create = async (req, res, next) => {
 
 export const update = async (req, res, next) => {
   try {
-    const {
-      tanggal,
-      appetizer_id,
-      menu_a_id,
-      menu_b_id,
-      dessert_id,
-      created_by,
-    } = req.body;
-    const { data, error } = await supabase
+    const { tanggal, nama_set, aktif, details } = req.body;
+    
+    const { data: menuHarian, error: mhError } = await supabase
       .from("menu_harian")
-      .update({
-        tanggal,
-        appetizer_id,
-        menu_a_id,
-        menu_b_id,
-        dessert_id,
-        created_by,
-      })
+      .update({ tanggal, nama_set, aktif })
       .eq("id", req.params.id)
-      .select(
-        "*, appetizer:appetizer_id(*), menu_a:menu_a_id(*), menu_b:menu_b_id(*), dessert:dessert_id(*)",
-      )
+      .select()
       .single();
 
-    if (error) throw error;
-    if (!data) return res.status(404).json({ message: "Daily menu not found" });
-    res.json(data);
+    if (mhError) throw mhError;
+
+    if (details) {
+      await supabase.from("menu_harian_detail").delete().eq("id_menu_harian", menuHarian.id);
+      if (details.length > 0) {
+        const detailsToInsert = details.map(d => ({
+          id_menu_harian: menuHarian.id,
+          id_menu: d.id_menu,
+          course: d.course
+        }));
+        await supabase.from("menu_harian_detail").insert(detailsToInsert);
+      }
+    }
+
+    const { data: completeData } = await supabase
+      .from("menu_harian")
+      .select("*, menu_harian_detail(*, menu(*))")
+      .eq("id", menuHarian.id)
+      .single();
+
+    res.json(completeData);
   } catch (err) {
     next(err);
   }
@@ -127,6 +140,7 @@ export const update = async (req, res, next) => {
 
 export const remove = async (req, res, next) => {
   try {
+    await supabase.from("menu_harian_detail").delete().eq("id_menu_harian", req.params.id);
     const { error } = await supabase
       .from("menu_harian")
       .delete()

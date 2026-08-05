@@ -11,8 +11,9 @@
     "start": "nodemon index.js"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.108.2",
+    "@supabase/supabase-js": "^2.110.9",
     "bcrypt": "^6.0.0",
+    "bcryptjs": "^3.0.3",
     "body-parser": "^2.3.0",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
@@ -21,5 +22,14 @@
     "joi": "^18.2.3",
     "jsonwebtoken": "^9.0.3",
     "sequelize": "^6.37.8"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/OverHeight/RestoUnikom-Server.git"
+  },
+  "keywords": [],
+  "bugs": {
+    "url": "https://github.com/OverHeight/RestoUnikom-Server/issues"
+  },
+  "homepage": "https://github.com/OverHeight/RestoUnikom-Server#readme"
 }

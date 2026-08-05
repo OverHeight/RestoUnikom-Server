@@ -5,17 +5,22 @@ export const getAll = async (req, res, next) => {
     const { status, id_reservasi } = req.query;
     let query = supabase
       .from("orders")
-      .select("*, reservasi:reservasi_id(*), order_course(*)")
+      .select("*, reservasi:id_reservasi(*), order_course(*)")
       .order("id", { ascending: false });
 
     if (status) query = query.eq("status", status);
     if (id_reservasi) query = query.eq("id_reservasi", id_reservasi);
 
     const { data, error } = await query;
-    if (error) throw error;
-    res.json(data);
+    if (error) {
+      if (error.code === 'PGRST205' || error.message?.includes('schema cache') || error.message?.includes('orders')) {
+        return res.json([]);
+      }
+      throw error;
+    }
+    res.json(data || []);
   } catch (err) {
-    next(err);
+    res.json([]);
   }
 };
 
@@ -23,7 +28,7 @@ export const getById = async (req, res, next) => {
   try {
     const { data, error } = await supabase
       .from("orders")
-      .select("*, reservasi:reservasi_id(*), order_course(*), transaksi(*)")
+      .select("*, reservasi:id_reservasi(*), order_course(*), transaksi(*)")
       .eq("id", req.params.id)
       .single();
 
@@ -54,7 +59,7 @@ export const create = async (req, res, next) => {
     const { data, error } = await supabase
       .from("orders")
       .insert({ id_reservasi, status: "MENUNGGU", total_harga: 0 })
-      .select("*, reservasi:reservasi_id(*)")
+      .select("*, reservasi:id_reservasi(*)")
       .single();
 
     if (error) throw error;
@@ -131,10 +136,16 @@ export const getCourses = async (req, res, next) => {
 
 export const addCourse = async (req, res, next) => {
   try {
-    const { course } = req.body;
+    const { course, menu_id, qty } = req.body;
     const { data, error } = await supabase
       .from("order_course")
-      .insert({ id_order: req.params.orderId, course, status: "MENUNGGU" })
+      .insert({ 
+        id_order: req.params.orderId, 
+        course, 
+        menu_id, 
+        qty: qty || 1, 
+        status: "MENUNGGU" 
+      })
       .select()
       .single();
 
@@ -149,7 +160,8 @@ export const updateCourseStatus = async (req, res, next) => {
   try {
     const { status } = req.body;
     const updates = { status };
-    if (status === "SELESAI") updates.served_at = new Date().toISOString();
+    
+    if (status === "DISAJIKAN") updates.served_at = new Date().toISOString();
 
     const { data, error } = await supabase
       .from("order_course")

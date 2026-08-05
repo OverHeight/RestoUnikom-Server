@@ -8,13 +8,13 @@ if (!supabaseUrl || !supabaseKey) {
   throw new Error("Supabase credentials not configured");
 }
 
+export const supabase = createClient(supabaseUrl, supabaseKey);
+
 (async () => {
   try {
-    await supabase.auth();
-    console.log("Connection has been established successfully.");
+    await supabase.auth.getSession();
+    console.log("Supabase connection established successfully.");
   } catch (error) {
-    console.error("Unable to connect to the database:", error);
+    console.error("Unable to connect to Supabase:", error);
   }
 })();
-
-export const supabase = createClient(supabaseUrl, supabaseKey);

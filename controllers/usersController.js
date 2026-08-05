@@ -1,4 +1,5 @@
 import { supabase } from "../config/supabase.js";
+import bcrypt from "bcryptjs";
 
 export const getAll = async (req, res, next) => {
   try {
@@ -37,9 +38,10 @@ export const getById = async (req, res, next) => {
 export const create = async (req, res, next) => {
   try {
     const { nama, email, password, role } = req.body;
+    const hashedPassword = await bcrypt.hash(password, 10);
     const { data, error } = await supabase
       .from("users")
-      .insert({ nama, email, password, role })
+      .insert({ nama, email, password_hash: hashedPassword, role })
       .select("id, nama, email, role, created_at")
       .single();
 

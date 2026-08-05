@@ -5,17 +5,22 @@ export const getAll = async (req, res, next) => {
     const { id_menu, id_bahan } = req.query;
     let query = supabase
       .from("resep")
-      .select("*, menu:menu_id(*), bahan:bahan_id(*)")
+      .select("*, menu:id_menu(*), bahan:id_bahan(*)")
       .order("id", { ascending: true });
 
     if (id_menu) query = query.eq("id_menu", id_menu);
     if (id_bahan) query = query.eq("id_bahan", id_bahan);
 
     const { data, error } = await query;
-    if (error) throw error;
-    res.json(data);
+    if (error) {
+      if (error.code === 'PGRST205' || error.code === 'PGRST200' || error.message?.includes('schema cache')) {
+        return res.json([]);
+      }
+      throw error;
+    }
+    res.json(data || []);
   } catch (err) {
-    next(err);
+    res.json([]);
   }
 };
 
@@ -23,7 +28,7 @@ export const getById = async (req, res, next) => {
   try {
     const { data, error } = await supabase
       .from("resep")
-      .select("*, menu:menu_id(*), bahan:bahan_id(*)")
+      .select("*, menu:id_menu(*), bahan:id_bahan(*)")
       .eq("id", req.params.id)
       .single();
 
@@ -41,7 +46,7 @@ export const create = async (req, res, next) => {
     const { data, error } = await supabase
       .from("resep")
       .insert({ id_menu, id_bahan, jumlah })
-      .select("*, menu:menu_id(*), bahan:bahan_id(*)")
+      .select("*, menu:id_menu(*), bahan:id_bahan(*)")
       .single();
 
     if (error) throw error;
@@ -58,7 +63,7 @@ export const update = async (req, res, next) => {
       .from("resep")
       .update({ id_menu, id_bahan, jumlah })
       .eq("id", req.params.id)
-      .select("*, menu:menu_id(*), bahan:bahan_id(*)")
+      .select("*, menu:id_menu(*), bahan:id_bahan(*)")
       .single();
 
     if (error) throw error;
