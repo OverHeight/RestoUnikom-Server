@@ -146,8 +146,23 @@ export const endSession = async (req, res, next) => {
       .update({ status: "SELESAI" })
       .eq("id", data.id_reservasi);
 
+    // Flag associated meja as needing cleaning via catatan field
+    // Uses existing 'catatan' text field — no schema change needed
+    const { data: rmData } = await supabase
+      .from("reservasi_meja")
+      .select("id_meja")
+      .eq("id_reservasi", data.id_reservasi);
+
+    if (rmData && rmData.length > 0) {
+      const mejaIds = rmData.map(rm => rm.id_meja);
+      await supabase.from("meja")
+        .update({ catatan: "PERLU_DIBERSIHKAN" })
+        .in("id", mejaIds);
+    }
+
     res.json(data);
   } catch (err) {
     next(err);
   }
 };
+

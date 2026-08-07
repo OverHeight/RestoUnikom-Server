@@ -71,19 +71,17 @@ export const getByCustomer = async (req, res, next) => {
 
 export const create = async (req, res, next) => {
   try {
-    const { id_customer, nama, nama_customer, no_telp, no_telp_customer, email, jumlah_tamu, id_jadwal_sesi, id_meja, created_by } = req.body;
+    const { id_customer, nama, nama_customer, no_telp, no_telp_customer, email, jumlah_tamu, id_jadwal_sesi, id_meja, created_by, pilihan_menu } = req.body;
 
     const finalNama = nama || nama_customer;
     const finalPhone = no_telp || no_telp_customer;
     let finalCustomerId = id_customer;
 
-    // 0. Customer Reuse / Creation Logic
     if (!finalCustomerId) {
       if (!finalNama || !finalPhone) {
         return res.status(400).json({ message: "nama and no_telp are required if id_customer is not provided" });
       }
 
-      // Check if customer exists by phone number
       const { data: existingCustomer } = await supabase
         .from("customer")
         .select("id")
@@ -93,19 +91,17 @@ export const create = async (req, res, next) => {
       if (existingCustomer) {
         finalCustomerId = existingCustomer.id;
       } else {
-        // Create new customer
         const { data: newCustomer, error: createError } = await supabase
           .from("customer")
           .insert({ nama: finalNama, no_telp: finalPhone, email: email || null })
           .select("id")
           .single();
-          
+
         if (createError) throw createError;
         finalCustomerId = newCustomer.id;
       }
     }
 
-    // 1. Verify Meja (Optional)
     if (id_meja) {
       const { data: meja, error: mejaError } = await supabase
         .from("meja")
@@ -115,8 +111,7 @@ export const create = async (req, res, next) => {
       if (mejaError) throw mejaError;
       if (!meja) return res.status(400).json({ message: "Table not found" });
     }
-    
-    // 2. Insert Reservasi
+
     const { data: reservasi, error } = await supabase
       .from("reservasi")
       .insert({
@@ -125,12 +120,12 @@ export const create = async (req, res, next) => {
         id_jadwal_sesi,
         status: "MENUNGGU",
         created_by,
+        pilihan_menu: pilihan_menu || "Set Menu A",   // Save customer's menu choice
       })
       .select()
       .single();
     if (error) throw error;
 
-    // 3. Insert Reservasi_Meja (if table provided)
     if (id_meja) {
       const { error: rmError } = await supabase
         .from("reservasi_meja")
@@ -141,7 +136,6 @@ export const create = async (req, res, next) => {
       if (rmError) throw rmError;
     }
 
-    // 4. Generate QR
     const { error: qrError } = await supabase
       .from("reservasi_qr")
       .insert({
@@ -149,7 +143,6 @@ export const create = async (req, res, next) => {
       });
     if (qrError) throw qrError;
 
-    // Fetch complete data to return
     const { data: completeData } = await supabase
       .from("reservasi")
       .select(`
@@ -171,6 +164,34 @@ export const create = async (req, res, next) => {
 export const updateStatus = async (req, res, next) => {
   try {
     const { status } = req.body;
+
+    // EDGE CASE GUARD: Prevent cancelling reservations once guest has arrived or completed dining
+    if (status === "BATAL") {
+      const { data: existing } = await supabase
+        .from("reservasi")
+        .select("status")
+        .eq("id", req.params.id)
+        .single();
+
+      if (existing && ["DATANG", "SELESAI"].includes(existing.status)) {
+        return res.status(400).json({
+          message: "Reservasi yang sudah DATANG atau SELESAI tidak dapat dibatalkan (Cannot cancel arrived/finished reservation)."
+        });
+      }
+
+      // FIX Bug #3: 'BATAL' tidak ada di order_status_enum ('MENUNGGU','DISAJIKAN','SELESAI','DIBAYAR')
+      // maupun pembayaran_status_enum ('PENDING','LUNAS').
+      // Jika reservasi dibatal sebelum check-in, orders yang belum dimulai cukup dimark SELESAI
+      // agar tidak muncul di queue. Transaksi PENDING dibiarkan (bisa di-reconcile manual).
+      const { data: orderList } = await supabase.from("orders").select("id, status").eq("id_reservasi", req.params.id);
+      if (orderList && orderList.length > 0) {
+        const pendingOrderIds = orderList.filter(o => o.status === "MENUNGGU").map(o => o.id);
+        if (pendingOrderIds.length > 0) {
+          await supabase.from("orders").update({ status: "SELESAI" }).in("id", pendingOrderIds);
+        }
+      }
+    }
+
     const { data, error } = await supabase
       .from("reservasi")
       .update({ status })
@@ -194,18 +215,21 @@ export const updateStatus = async (req, res, next) => {
 
 export const update = async (req, res, next) => {
   try {
-    const { jumlah_tamu, id_meja } = req.body;
-    
-    if (jumlah_tamu) {
+    const { jumlah_tamu, id_meja, id_jadwal_sesi } = req.body;
+    const updatePayload = {};
+
+    if (jumlah_tamu) updatePayload.jumlah_tamu = jumlah_tamu;
+    if (id_jadwal_sesi) updatePayload.id_jadwal_sesi = id_jadwal_sesi;
+
+    if (Object.keys(updatePayload).length > 0) {
       const { error } = await supabase
         .from("reservasi")
-        .update({ jumlah_tamu })
+        .update(updatePayload)
         .eq("id", req.params.id);
       if (error) throw error;
     }
-    
+
     if (id_meja) {
-      // Check if existing
       const { data: existingRm } = await supabase.from("reservasi_meja").select("*").eq("id_reservasi", req.params.id);
       if (existingRm && existingRm.length > 0) {
         await supabase.from("reservasi_meja").update({ id_meja }).eq("id_reservasi", req.params.id);
@@ -213,7 +237,7 @@ export const update = async (req, res, next) => {
         await supabase.from("reservasi_meja").insert({ id_reservasi: req.params.id, id_meja });
       }
     }
-    
+
     const { data: completeData, error: fetchErr } = await supabase
       .from("reservasi")
       .select(`
@@ -225,7 +249,7 @@ export const update = async (req, res, next) => {
       `)
       .eq("id", req.params.id)
       .single();
-      
+
     if (fetchErr) throw fetchErr;
     res.json(completeData);
   } catch (err) {
@@ -235,11 +259,9 @@ export const update = async (req, res, next) => {
 
 export const remove = async (req, res, next) => {
   try {
-    // Supabase cascade delete handles related tables if configured, otherwise manual delete needed.
-    // Ensure relations are deleted first.
     await supabase.from("reservasi_qr").delete().eq("id_reservasi", req.params.id);
     await supabase.from("reservasi_meja").delete().eq("id_reservasi", req.params.id);
-    
+
     const { error } = await supabase
       .from("reservasi")
       .delete()

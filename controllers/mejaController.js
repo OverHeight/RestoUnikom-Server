@@ -123,6 +123,24 @@ export const update = async (req, res, next) => {
   }
 };
 
+export const markClean = async (req, res, next) => {
+  try {
+    // Hapus flag 'PERLU_DIBERSIHKAN' dari catatan, menandai meja sudah bersih
+    const { data, error } = await supabase
+      .from("meja")
+      .update({ catatan: null })
+      .eq("id", req.params.id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    if (!data) return res.status(404).json({ message: "Table not found" });
+    res.json(data);
+  } catch (err) {
+    next(err);
+  }
+};
+
 export const remove = async (req, res, next) => {
   try {
     const { error } = await supabase

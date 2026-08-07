@@ -11,7 +11,8 @@ router.patch("/:id/total", controller.updateTotal);
 router.delete("/:id", controller.remove);
 
 // Order courses
-router.get("/courses/:courseId", controller.updateCourseStatus);
+// FIX Bug #5: Hapus GET /courses/:courseId yang salah dipetakan ke updateCourseStatus (side-effect).
+// GET valid hanya /:orderId/courses (ambil semua course untuk 1 order).
 router.patch("/courses/:courseId", controller.updateCourseStatus);
 router.get("/:orderId/courses", controller.getCourses);
 router.post("/:orderId/courses", controller.addCourse);

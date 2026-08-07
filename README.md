@@ -8,7 +8,7 @@
 
 **RestoUnikom Backend Server** adalah repositori API RESTful berbasis **Node.js (ES Modules) + Express.js** yang berfungsi sebagai mesin pemroses bisnis utama (*Business Logic Engine*) untuk sistem restoran fine dining berbasis sesi.
 
-Server ini menangani otentikasi berbasis JWT, reservasi meja, pengontrolan alur penyajian *multi-course* fine dining, pengurangan stok bahan baku otomatis, transaksi pembayaran, serta integrasi data dengan **Supabase PostgreSQL**.
+Server ini menangani otentikasi berbasis JWT, reservasi meja, pengontrolan alur penyajikan *multi-course* fine dining, pengurangan stok bahan baku otomatis, transaksi pembayaran, serta integrasi data dengan **Supabase PostgreSQL**.
 
 ---
 
@@ -341,8 +341,9 @@ server/
 │   ├── bahanController.js
 │   └── notifikasiController.js
 │
-├── middleware/                 # Auth JWT, Role Checker, & Global Error Handler
-│   ├── authMiddleware.js
+├── middleware/                 # Auth JWT, Role Checker, Audit Log & Global Error Handler
+│   ├── auditMiddleware.js
+│   ├── requireRole.js
 │   └── errorHandler.js
 │
 ├── routes/                     # Router Endpoints API Express
@@ -401,7 +402,7 @@ npm install
 ### 3. Pengaturan Variabel Lingkungan (`.env`)
 Buat berkas `.env` di direktori utama `server/`:
 ```env
-PORT=5000
+PORT=3000
 SUPABASE_URL=https://your-supabase-project.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=your-supabase-service-role-key
 JWT_SECRET=your-secure-jwt-secret-key
@@ -411,7 +412,7 @@ JWT_SECRET=your-secure-jwt-secret-key
 ```bash
 npm run start
 ```
-Server backend akan berjalan di `http://localhost:5000` dengan otomatis merefresh jika ada perubahan berkas (*Nodemon*).
+Server backend akan berjalan di `http://localhost:3000` dengan otomatis merefresh jika ada perubahan berkas (*Nodemon*).
 
 ---
 

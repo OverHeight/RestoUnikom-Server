@@ -17,3 +17,12 @@ npm-debug.log*
 .idea
 .DS_Store
 Thumbs.db
+
+# Database & SQL Files
+*.sql
+
+# Seed & Dummy Data Files
+clean_dummy_data.js
+seed_*.js
+seed*.js
+clean*.js
