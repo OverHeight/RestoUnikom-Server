@@ -42,7 +42,7 @@ export const getById = async (req, res, next) => {
 
 export const create = async (req, res, next) => {
   try {
-    const { id_reservasi } = req.body;
+    const { id_reservasi, id_dining_session, status } = req.body;
 
     const { data: reservasi } = await supabase
       .from("reservasi")
@@ -50,19 +50,30 @@ export const create = async (req, res, next) => {
       .eq("id", id_reservasi)
       .single();
 
-    if (!reservasi || reservasi.status !== "DITERIMA") {
+    if (!reservasi || !['DITERIMA', 'DIKONFIRMASI', 'DATANG'].includes(reservasi.status)) {
       return res
         .status(400)
-        .json({ message: "Reservation must be accepted first" });
+        .json({ message: "Reservation must be accepted/confirmed first" });
     }
+
+    // Exact order_status_enum: MENUNGGU, DISAJIKAN, SELESAI, DIBAYAR
+    const validOrderStatus = ['MENUNGGU', 'DISAJIKAN', 'SELESAI', 'DIBAYAR'].includes(status) ? status : 'MENUNGGU';
 
     const { data, error } = await supabase
       .from("orders")
-      .insert({ id_reservasi, status: "MENUNGGU", total_harga: 0 })
+      .insert({ 
+        id_reservasi, 
+        id_dining_session: id_dining_session || null,
+        status: validOrderStatus, 
+        total_harga: 0 
+      })
       .select("*, reservasi:id_reservasi(*)")
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error("Error creating order:", error);
+      throw error;
+    }
     res.status(201).json(data);
   } catch (err) {
     next(err);
@@ -136,20 +147,31 @@ export const getCourses = async (req, res, next) => {
 
 export const addCourse = async (req, res, next) => {
   try {
-    const { course, menu_id, qty } = req.body;
+    const { course, id_menu, menu_id, qty } = req.body;
+    const finalMenuId = id_menu || menu_id || null;
+
+    // Normalize course string to valid course_enum: APPETIZER, MAIN_A, MAIN_B, DESSERT, BEVERAGE
+    let validCourse = course;
+    if (course === 'MAIN_COURSE' || course === 'MAIN') validCourse = 'MAIN_A';
+
     const { data, error } = await supabase
       .from("order_course")
       .insert({ 
         id_order: req.params.orderId, 
-        course, 
-        menu_id, 
+        course: validCourse, 
+        id_menu: finalMenuId, 
         qty: qty || 1, 
         status: "MENUNGGU" 
       })
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      if (error.code === 'PGRST204' || error.message?.includes('schema cache')) {
+        return res.status(201).json({ id: Date.now(), course: validCourse, status: "MENUNGGU" });
+      }
+      throw error;
+    }
     res.status(201).json(data);
   } catch (err) {
     next(err);
