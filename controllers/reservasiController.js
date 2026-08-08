@@ -110,6 +110,21 @@ export const create = async (req, res, next) => {
         .single();
       if (mejaError) throw mejaError;
       if (!meja) return res.status(400).json({ message: "Table not found" });
+
+      // Race condition guard: check if this table is ALREADY reserved or seated for this session
+      const { data: existingReservations } = await supabase
+        .from("reservasi_meja")
+        .select("id, id_reservasi, reservasi:id_reservasi(id, status, id_jadwal_sesi)")
+        .eq("id_meja", id_meja);
+
+      const isAlreadyOccupied = (existingReservations || []).some(rm => 
+        rm.reservasi?.id_jadwal_sesi === id_jadwal_sesi &&
+        ['MENUNGGU', 'DATANG', 'DIKONFIRMASI'].includes(rm.reservasi?.status)
+      );
+
+      if (isAlreadyOccupied) {
+        return res.status(400).json({ message: "Meja ini sudah dipesan/ditempati untuk sesi ini." });
+      }
     }
 
     const { data: reservasi, error } = await supabase

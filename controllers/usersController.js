@@ -82,3 +82,31 @@ export const remove = async (req, res, next) => {
     next(err);
   }
 };
+
+export const changePassword = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { newPassword } = req.body;
+
+    if (!newPassword || newPassword.length < 6) {
+      return res.status(400).json({ message: "Password minimal 6 karakter" });
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    const { data, error } = await supabase
+      .from("users")
+      .update({ password_hash: hashedPassword })
+      .eq("id", id)
+      .select("id, nama, email, role")
+      .single();
+
+    if (error) throw error;
+    if (!data) return res.status(404).json({ message: "User not found" });
+
+    res.json({ message: "Password berhasil diperbarui", user: data });
+  } catch (err) {
+    next(err);
+  }
+};
+
